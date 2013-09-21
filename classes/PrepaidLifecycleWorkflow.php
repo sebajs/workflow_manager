@@ -285,7 +285,7 @@ class PrepaidLifecycleWorkflow
             'message' => 'expired.deposit',
             'task' => 'setActive',
             'in_arcs' => array(
-                'passive_not_accum',
+                'expired',
             ),
             'out_arcs' => array(
                 'active' => array(
@@ -338,6 +338,7 @@ class PrepaidLifecycleWorkflow
         debug(__CLASS__.".".__FUNCTION__."() Executing. Will check account's balance and account's service cost."); 
         
         $enough_credit = false;
+        $withdrawal = 0;
         
         switch ($this->_account->getStatus()) {
             case "idle":
