@@ -1,0 +1,73 @@
+digraph PrepaidLifecycleWorkflow {
+node [shape=box,label="idle\n.setActive"];                        "idle.setActive"; 
+node [shape=box,label="active\n.setGrace"];                       "active.setGrace"; 
+node [shape=box,label="active\n.setActiveWithMsgs"];              "active.setActiveWithMsgs"; 
+node [shape=box,label="active_with_msgs\n.sendMessage"];          "active_with_msgs.sendMessage"; 
+node [shape=box,label="active_with_msgs\n.setActive"];            "active_with_msgs.setActive"; 
+node [shape=box,label="active_with_msgs\n.setGrace"];             "active_with_msgs.setGrace"; 
+node [shape=box,label="grace\n.setActive"];                       "grace.setActive"; 
+node [shape=box,label="grace\n.setPassive"];                      "grace.setPassive"; 
+node [shape=box,label="passive_accum\n.setActive"];               "passive_accum.setActive"; 
+node [shape=box,label="passive_accum\n.setPassiveNotAccum"];      "passive_accum.setPassiveNotAccum"; 
+node [shape=box,label="passive_not_accum\n.setActive"];           "passive_not_accum.setActive"; 
+node [shape=box,label="passive_not_accum\n.expropiateBalance"];   "passive_not_accum.expropiateBalance"; 
+node [shape=box,label="passive_not_accum\n.setExpired"];          "passive_not_accum.setExpired";
+node [shape=box,label="expired\n.setActive"];                     "expired.setActive"; 
+node [shape=box,label="expired\n.setShutdown"];                   "expired.setShutdown";
+                    
+node [shape=circle,fixedsize=false,color=green,label="active"];             active;
+node [shape=circle,fixedsize=false,color=green,label="active\nwith\nmsgs"]; active_with_msgs;
+node [shape=circle,fixedsize=false,color=green,label="grace"];              grace;
+node [shape=circle,fixedsize=false,color=red,label="passive\naccum"];       passive_accum;
+node [shape=circle,fixedsize=false,color=red,label="passive\nnot\naccum"];  passive_not_accum;
+node [shape=circle,fixedsize=false,color=red,label="expired"];              expired;
+node [shape=ellipse,fixedsize=false,color=red,label="idle"];                idle;
+node [shape=ellipse,fixedsize=false,color=red,label="shutdown"];            shutdown;
+
+edge [fontsize=10];
+idle->"idle.setActive"                                      [label="M:deposit",labelangle=45];
+"idle.setActive"->active                                    [label="C:credit >= cost"];
+"idle.setActive"->idle                                      [label="C:credit < cost"];
+active->"active.setGrace"                                   [label="T"];
+"active.setGrace"->active                                   [label="C:credit >= cost"];
+"active.setGrace"->grace                                    [label="C:credit < cost"];
+active->"active.setActiveWithMsgs"                          [label="T"];
+"active.setActiveWithMsgs"->active_with_msgs                [label="S"];
+active_with_msgs->"active_with_msgs.sendMessage"            [label="T"];
+"active_with_msgs.sendMessage"->active_with_msgs            [label="S"];
+active_with_msgs->"active_with_msgs.setActive"              [label="M:deposit"];
+"active_with_msgs.setActive"->active                        [label="C:credit >= cost"];
+"active_with_msgs.setActive"->active_with_msgs              [label="C:credit < cost"];
+active_with_msgs->"active_with_msgs.setGrace"               [label="T"];
+"active_with_msgs.setGrace"->grace                          [label="S"];
+grace->"grace.setActive"                                    [label="M:deposit"];
+"grace.setActive"->active                                   [label="C:credit >= cost"];
+grace->"grace.setPassive"                                   [label="T"];
+"grace.setPassive"->passive_accum                           [label="C:accum debt"];
+"grace.setPassive"->passive_not_accum                       [label="C:not accum debt"];
+passive_accum->"passive_accum.setActive"                    [label="M:deposit"];
+"passive_accum.setActive"->active                           [label="C:credit >= cost"];
+"passive_accum.setActive"->passive_accum                    [label="C:credit < cost"];
+passive_accum->"passive_accum.setPassiveNotAccum"           [label="T"];
+"passive_accum.setPassiveNotAccum"->passive_accum           [label="C:accum < limit"];
+"passive_accum.setPassiveNotAccum"->passive_not_accum       [label="C:accum >= limit"];
+passive_not_accum->"passive_not_accum.setActive"            [label="M:deposit"];
+"passive_not_accum.setActive"->active                       [label="C:credit >= cost"];
+"passive_not_accum.setActive"->passive_not_accum            [label="C:credit < cost"];
+passive_not_accum->"passive_not_accum.expropiateBalance"    [label="T"];
+"passive_not_accum.expropiateBalance"->passive_not_accum    [label="S"];
+passive_not_accum->"passive_not_accum.setExpired"           [label="T"];
+"passive_not_accum.setExpired"->expired                     [label="S"];
+expired->"expired.setActive"                                [label="M:deposit"];
+"expired.setActive"->active                                 [label="C:credit >= cost"];
+"expired.setActive"->expired                                [label="C:credit < cost"];
+expired->"expired.setShutdown"                              [label="T"];
+"expired.setShutdown"->shutdown                             [label="S"];
+
+overlap=false
+label="PetriNet Model for Prepaid Life Cycle Workflow\Layed out by Graphviz"
+fontsize=14;
+}
+
+
+
