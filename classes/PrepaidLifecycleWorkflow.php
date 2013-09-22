@@ -8,11 +8,17 @@ class PrepaidLifecycleWorkflow
             'out_arcs' => array(
                 'idle.setActive',
             ),
+            'description' => array(
+                'hasService' => false,
+            ),
         ),
         'active' => array(
             'out_arcs' => array(
                 'active.setGrace',
                 'active.setActiveWithMsgs',
+            ),
+            'description' => array(
+                'hasService' => true,
             ),
         ),
         'active_with_msgs' => array(
@@ -21,11 +27,17 @@ class PrepaidLifecycleWorkflow
                 'active_with_msgs.setActive',
                 'active_with_msgs.setGrace',
             ),
+            'description' => array(
+                'hasService' => true,
+            ),
         ),
         'grace' => array(
             'out_arcs' => array(
                 'grace.setActive',
                 'grace.setPassiveAccum',
+            ),
+            'description' => array(
+                'hasService' => true,
             ),
         ),
         'passive_accum' => array(
@@ -34,6 +46,9 @@ class PrepaidLifecycleWorkflow
                 'passive_accum.accumulatePeriodDebt',
                 'passive_accum.setPassiveNotAccum',
             ),
+            'description' => array(
+                'hasService' => false,
+            ),
         ),
         'passive_not_accum' => array(
             'out_arcs' => array(
@@ -41,15 +56,24 @@ class PrepaidLifecycleWorkflow
                 'passive_not_accum.expropiateBalance',
                 'passive_not_accum.setExpired',
             ),
+            'description' => array(
+                'hasService' => false,
+            ),
         ),
         'expired' => array(
             'out_arcs' => array(
                 'expired.setActive',
                 'expired.setShutdown',
             ),
+            'description' => array(
+                'hasService' => false,
+            ),
         ),
         'shutdown' => array(
             'out_arcs' => array(),
+            'description' => array(
+                'hasService' => false,
+            ),
         ),
     );
 

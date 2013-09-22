@@ -1,67 +1,67 @@
-digraph PrepaidLifecycleWorkflow {node [shape=circle,fixedsize=false,label="idle"]; "idle";
-node [shape=circle,fixedsize=false,label="active"]; "active";
-node [shape=circle,fixedsize=false,label="active\nwith\nmsgs"]; "active_with_msgs";
-node [shape=circle,fixedsize=false,label="grace"]; "grace";
-node [shape=circle,fixedsize=false,label="passive\naccum"]; "passive_accum";
-node [shape=circle,fixedsize=false,label="passive\nnot\naccum"]; "passive_not_accum";
-node [shape=circle,fixedsize=false,label="expired"]; "expired";
-node [shape=circle,fixedsize=false,label="shutdown"]; "shutdown";
-node [shape=box,fixedsize=false,label="idle\n.setActive"]; "idle.setActive";
+digraph PrepaidLifecycleWorkflow {node [shape=circle,color=red,fixedsize=false,label="idle"]; "idle";
+node [shape=circle,color=green,fixedsize=false,label="active"]; "active";
+node [shape=circle,color=green,fixedsize=false,label="active\nwith\nmsgs"]; "active_with_msgs";
+node [shape=circle,color=green,fixedsize=false,label="grace"]; "grace";
+node [shape=circle,color=red,fixedsize=false,label="passive\naccum"]; "passive_accum";
+node [shape=circle,color=red,fixedsize=false,label="passive\nnot\naccum"]; "passive_not_accum";
+node [shape=circle,color=red,fixedsize=false,label="expired"]; "expired";
+node [shape=circle,color=red,fixedsize=false,label="shutdown"]; "shutdown";
+node [shape=box,color=black,fixedsize=false,label="idle\n.setActive"]; "idle.setActive";
 edge [fontsize=10, label="M:deposit"] "idle"->"idle.setActive"
 edge [fontsize=10, label="C: ok"] "idle.setActive"->"active"
 edge [fontsize=10, label="C: error"] "idle.setActive"->"idle"
-node [shape=box,fixedsize=false,label="active\n.setGrace"]; "active.setGrace";
+node [shape=box,color=black,fixedsize=false,label="active\n.setGrace"]; "active.setGrace";
 edge [fontsize=10, label="Timer"] "active"->"active.setGrace"
 edge [fontsize=10, label="C: ok"] "active.setGrace"->"active"
 edge [fontsize=10, label="C: error"] "active.setGrace"->"grace"
-node [shape=box,fixedsize=false,label="active\n.setActiveWithMsgs"]; "active.setActiveWithMsgs";
+node [shape=box,color=black,fixedsize=false,label="active\n.setActiveWithMsgs"]; "active.setActiveWithMsgs";
 edge [fontsize=10, label="Timer"] "active"->"active.setActiveWithMsgs"
 edge [fontsize=10, label="C: ok"] "active.setActiveWithMsgs"->"active"
 edge [fontsize=10, label="C: error"] "active.setActiveWithMsgs"->"active_with_msgs"
-node [shape=box,fixedsize=false,label="active_with_msgs\n.setActive"]; "active_with_msgs.setActive";
+node [shape=box,color=black,fixedsize=false,label="active_with_msgs\n.setActive"]; "active_with_msgs.setActive";
 edge [fontsize=10, label="M:deposit"] "active_with_msgs"->"active_with_msgs.setActive"
 edge [fontsize=10, label="C: ok"] "active_with_msgs.setActive"->"active"
 edge [fontsize=10, label="C: error"] "active_with_msgs.setActive"->"active_with_msgs"
-node [shape=box,fixedsize=false,label="active_with_msgs\n.sendMessage"]; "active_with_msgs.sendMessage";
+node [shape=box,color=black,fixedsize=false,label="active_with_msgs\n.sendMessage"]; "active_with_msgs.sendMessage";
 edge [fontsize=10, label="Timer"] "active_with_msgs"->"active_with_msgs.sendMessage"
 edge [fontsize=10, label="S"] "active_with_msgs.sendMessage"->"active_with_msgs"
-node [shape=box,fixedsize=false,label="active_with_msgs\n.setGrace"]; "active_with_msgs.setGrace";
+node [shape=box,color=black,fixedsize=false,label="active_with_msgs\n.setGrace"]; "active_with_msgs.setGrace";
 edge [fontsize=10, label="Timer"] "active_with_msgs"->"active_with_msgs.setGrace"
 edge [fontsize=10, label="S"] "active_with_msgs.setGrace"->"grace"
-node [shape=box,fixedsize=false,label="grace\n.setActive"]; "grace.setActive";
+node [shape=box,color=black,fixedsize=false,label="grace\n.setActive"]; "grace.setActive";
 edge [fontsize=10, label="M:deposit"] "grace"->"grace.setActive"
 edge [fontsize=10, label="C: ok"] "grace.setActive"->"active"
 edge [fontsize=10, label="C: error"] "grace.setActive"->"grace"
-node [shape=box,fixedsize=false,label="grace\n.setPassiveAccum"]; "grace.setPassiveAccum";
+node [shape=box,color=black,fixedsize=false,label="grace\n.setPassiveAccum"]; "grace.setPassiveAccum";
 edge [fontsize=10, label="Timer"] "grace"->"grace.setPassiveAccum"
 edge [fontsize=10, label="S"] "grace.setPassiveAccum"->"passive_accum"
-node [shape=box,fixedsize=false,label="passive_accum\n.setActive"]; "passive_accum.setActive";
+node [shape=box,color=black,fixedsize=false,label="passive_accum\n.setActive"]; "passive_accum.setActive";
 edge [fontsize=10, label="M:deposit"] "passive_accum"->"passive_accum.setActive"
 edge [fontsize=10, label="C: ok"] "passive_accum.setActive"->"active"
 edge [fontsize=10, label="C: error"] "passive_accum.setActive"->"passive_accum"
-node [shape=box,fixedsize=false,label="passive_accum\n.accumulatePeriodDebt"]; "passive_accum.accumulatePeriodDebt";
+node [shape=box,color=black,fixedsize=false,label="passive_accum\n.accumulatePeriodDebt"]; "passive_accum.accumulatePeriodDebt";
 edge [fontsize=10, label="Timer"] "passive_accum"->"passive_accum.accumulatePeriodDebt"
 edge [fontsize=10, label="C: ok"] "passive_accum.accumulatePeriodDebt"->"passive_accum"
 edge [fontsize=10, label="C: error"] "passive_accum.accumulatePeriodDebt"->"passive_not_accum"
-node [shape=box,fixedsize=false,label="passive_accum\n.setPassiveNotAccum"]; "passive_accum.setPassiveNotAccum";
+node [shape=box,color=black,fixedsize=false,label="passive_accum\n.setPassiveNotAccum"]; "passive_accum.setPassiveNotAccum";
 edge [fontsize=10, label="Auto"] "passive_accum"->"passive_accum.setPassiveNotAccum"
 edge [fontsize=10, label="C: ok"] "passive_accum.setPassiveNotAccum"->"passive_not_accum"
 edge [fontsize=10, label="C: error"] "passive_accum.setPassiveNotAccum"->"passive_accum"
-node [shape=box,fixedsize=false,label="passive_not_accum\n.setActive"]; "passive_not_accum.setActive";
+node [shape=box,color=black,fixedsize=false,label="passive_not_accum\n.setActive"]; "passive_not_accum.setActive";
 edge [fontsize=10, label="M:deposit"] "passive_not_accum"->"passive_not_accum.setActive"
 edge [fontsize=10, label="C: ok"] "passive_not_accum.setActive"->"active"
 edge [fontsize=10, label="C: error"] "passive_not_accum.setActive"->"passive_not_accum"
-node [shape=box,fixedsize=false,label="passive_not_accum\n.expropiateBalance"]; "passive_not_accum.expropiateBalance";
+node [shape=box,color=black,fixedsize=false,label="passive_not_accum\n.expropiateBalance"]; "passive_not_accum.expropiateBalance";
 edge [fontsize=10, label="Timer"] "passive_not_accum"->"passive_not_accum.expropiateBalance"
 edge [fontsize=10, label="S"] "passive_not_accum.expropiateBalance"->"passive_not_accum"
-node [shape=box,fixedsize=false,label="passive_not_accum\n.setExpired"]; "passive_not_accum.setExpired";
+node [shape=box,color=black,fixedsize=false,label="passive_not_accum\n.setExpired"]; "passive_not_accum.setExpired";
 edge [fontsize=10, label="Timer"] "passive_not_accum"->"passive_not_accum.setExpired"
 edge [fontsize=10, label="S"] "passive_not_accum.setExpired"->"expired"
-node [shape=box,fixedsize=false,label="expired\n.setActive"]; "expired.setActive";
+node [shape=box,color=black,fixedsize=false,label="expired\n.setActive"]; "expired.setActive";
 edge [fontsize=10, label="M:deposit"] "expired"->"expired.setActive"
 edge [fontsize=10, label="C: ok"] "expired.setActive"->"active"
 edge [fontsize=10, label="C: error"] "expired.setActive"->"expired"
-node [shape=box,fixedsize=false,label="expired\n.setShutdown"]; "expired.setShutdown";
+node [shape=box,color=black,fixedsize=false,label="expired\n.setShutdown"]; "expired.setShutdown";
 edge [fontsize=10, label="Timer"] "expired"->"expired.setShutdown"
 edge [fontsize=10, label="S"] "expired.setShutdown"->"shutdown"
 }

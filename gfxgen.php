@@ -12,15 +12,16 @@ $flow = new PrepaidLifecycleWorkflow($account_id);
 $rawdata = 'digraph PrepaidLifecycleWorkflow {';
 
 // places
-foreach ($flow->places AS $place => $arcs) {
+foreach ($flow->places AS $place => $config) {
     $label = str_replace("_", "\\n", $place);
-    $rawdata .= "node [shape=circle,fixedsize=false,label=\"{$label}\"]; \"{$place}\";\n";
+    $color = ($config['description']['hasService']) ? 'green' : 'red';
+    $rawdata .= "node [shape=circle,color={$color},fixedsize=false,label=\"{$label}\"]; \"{$place}\";\n";
 }
 
 // transitions
 foreach ($flow->transitions AS $transition => $config) {
     $label = str_replace(".", "\\n.", $transition);
-    $rawdata .= "node [shape=box,fixedsize=false,label=\"{$label}\"]; \"{$transition}\";\n";
+    $rawdata .= "node [shape=box,color=black,fixedsize=false,label=\"{$label}\"]; \"{$transition}\";\n";
 
     if (is_array($config['in_arcs'])) {
         foreach ($config['in_arcs'] AS $target) {
