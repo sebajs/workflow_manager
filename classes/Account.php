@@ -43,16 +43,39 @@ class Account extends Show
     {
         return $this->balance;
     }
-    
+
     public function getStatus()
     {
         return $this->status;
     }
-    
+
     public function setStatus($status)
     {
         $this->status = $status;
         $this->saveToFile();
+    }
+    
+    public function getDebtAccumulations()
+    {
+        return $this->debt_accumulations;
+    }
+    
+    public function incrementDebtAccumulations()
+    {
+        $this->debt_accumulations++;
+        $this->saveToFile();
+    }
+
+    public function chargeService()
+    {
+        debug(__CLASS__.".".__FUNCTION__."() Withdrawing ({$this->service_package->cost}) from Account");
+        $this->withdraw($this->service_package->cost, 'Service Charge');
+    }
+
+    public function expropiateBalance()
+    {
+        debug(__CLASS__.".".__FUNCTION__."() Withdrawing ({$this->balance}) from Account");
+        $this->withdraw($this->balance, 'Balance Expropiation');
     }
 
     public function deposit($amount, $comment = null)

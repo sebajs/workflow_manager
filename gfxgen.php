@@ -2,10 +2,13 @@
 
 require_once './autoload.php';
 
-$account_id = 123;
+$account_id = $_SERVER['argv'][1];
+
 $datafile   = "./gfx/{$account_id}_gfx.dat";
 $gfxfile    = "./gfx/{$account_id}_gfx.png";
 
+$account = new Account($account_id);
+$workflow_case = new WorkflowCase('PrepaidLifecycleWorkflow', $account);
 $flow = new PrepaidLifecycleWorkflow($account_id);
 
 // gfx start
