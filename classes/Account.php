@@ -113,17 +113,26 @@ class Account extends Show
         if (file_exists($filename)) {
             $data = unserialize(file_get_contents($filename));
             
-            $this->balance      = $data->balance;
-            $this->status       = $data->status;
-            $this->transactions = $data->transactions;
+            $this->balance            = $data->balance;
+            $this->status             = $data->status;
+            $this->transactions       = $data->transactions;;
+            $this->debt_accumulations = $data->debt_accumulations;
             
             $this->service_package->duration          = $data->service_package->duration;
-            $this->service_package->cost              = $data->service_package->cost;
             $this->service_package->grace             = $data->service_package->grace;
+
+            $this->service_package->fromActiveToMessaging   = $data->service_package->fromActiveToMessaging;
+            $this->service_package->fromMessagingToGrace    = $data->service_package->fromMessagingToGrace;
+            $this->service_package->messagingPeriod         = $data->service_package->messagingPeriod;
+            $this->service_package->fromPassiveToExpropiate = $data->service_package->fromPassiveToExpropiate;
+            $this->service_package->fromPassiveToExpired    = $data->service_package->fromPassiveToExpired;
+            $this->service_package->fromExpiredToShutdown   = $data->service_package->fromExpiredToShutdown;
+
+            $this->service_package->cost              = $data->service_package->cost;
             $this->service_package->reconnection_time = $data->service_package->reconnection_time;
             $this->service_package->reconnection_cost = $data->service_package->reconnection_cost;
             $this->service_package->debt_accum_limit  = $data->service_package->debt_accum_limit;
-            $this->debt_accumulations                 = $data->debt_accumulations;
+
             return true;
         } else {
             return false;
