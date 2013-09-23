@@ -15,20 +15,20 @@ class Account extends Show
         $this->id = $account_id;
 
         $this->service_package                    = new stdClass();
-        $this->service_package->duration          = "60 seconds";
-        $this->service_package->grace             = "15 seconds";
+        $this->service_package->duration          = "40 seconds";
+        $this->service_package->grace             = "10 seconds";
         
-        $this->service_package->fromActiveToMessaging   = "45 seconds";
-        $this->service_package->fromMessagingToGrace    = "15 seconds";
-        $this->service_package->messagingPeriod         = "5 seconds";
-        $this->service_package->fromPassiveToExpropiate = "30 seconds";
-        $this->service_package->fromPassiveToExpired    = "60 seconds";
-        $this->service_package->fromExpiredToShutdown   = "60 seconds";
+        $this->service_package->fromActiveToMessaging   = "30 seconds";
+        $this->service_package->fromMessagingToGrace    = "10 seconds";
+        $this->service_package->messagingPeriod         = "3 seconds";
+        $this->service_package->fromPassiveToExpropiate = "20 seconds";
+        $this->service_package->fromPassiveToExpired    = "30 seconds";
+        $this->service_package->fromExpiredToShutdown   = "30 seconds";
     
         $this->service_package->cost              = 50;
         $this->service_package->reconnection_time = 90;
         $this->service_package->reconnection_cost = 25;
-        $this->service_package->debt_accum_limit  = 2;
+        $this->service_package->debt_accum_limit  = 0;
         $this->debt_accumulations                 = 0;
         
         $this->loadFromFile();
@@ -129,6 +129,7 @@ class Account extends Show
     {
         $filename = './data/'.$this->id.'.acc';
         file_put_contents($filename, serialize($this));
+        chmod($filename, 0666);
     }
     
     public static function getAccount($account_id)

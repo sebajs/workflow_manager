@@ -16,7 +16,7 @@ class GfxGenerator
         $gfxfile    = "./gfx/{$account_id}_gfx.png";
 
         // gfx start
-        $rawdata = 'digraph gfx { rankdir=TB;';
+        $rawdata = 'digraph gfx { rankdir=LR;';
 
         // places
         foreach ($flow->getPlaces() AS $place => $config) {

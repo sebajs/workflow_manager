@@ -82,6 +82,7 @@ class WorkflowCase extends Show
     {
         $filename = './data/'.$this->_case_id.'.case';
         file_put_contents($filename, serialize($this));
+        chmod($filename, 0666);
     }
     
 }
