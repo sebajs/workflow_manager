@@ -2,23 +2,41 @@
 
 class WorkflowEngine
 {
+    /**
+     * @var TaskScheduler
+     */
     private $_task_scheduler;
+
+
+    /**
+     * @var WorkflowCase
+     */
     private $_case;
-    
+
+    /**
+     * @param TaskScheduler $task_scheduler
+     */
     public function __construct($task_scheduler)
     {
         $this->_task_scheduler = $task_scheduler;
     }
 
+    /**
+     * @param WorkflowCase $case
+     */
     public function setCase($case)
     {
         $this->_case = $case;
     }
 
+    /**
+     * @param string $message
+     * @param array null $task_params
+     */
     public function sendMessage($message, $task_params = null)
     {
         debug(__CLASS__.".".__FUNCTION__."() Received Message '{$message}'. Will check if CASE allows it.");
-        foreach ($this->_case->workflow->transitions as $transition_name => $transition) {            
+        foreach ($this->_case->workflow->getTransitions() as $transition_name => $transition) {
             
             if ($transition['trigger'] == 'MSG' && $message == $transition['message']) {
                 debug(__CLASS__.".".__FUNCTION__."() Message '{$message}' allowed in this PLACE. Will execute transition '{$transition_name}'.");
@@ -33,10 +51,17 @@ class WorkflowEngine
         }
         debug(__CLASS__.".".__FUNCTION__."() Ended.");
     }
-    
+
+    /**
+     * @param string $transition_name
+     * @param array null $transition_params
+     * @param int $level
+     *
+     * @return bool
+     */
     public function execute($transition_name, $transition_params = null, $level = 1)
     {
-        $transition = $this->_case->workflow->transitions[$transition_name];
+        $transition = $this->_case->workflow->getTransitions()[$transition_name];
         
         debug(__CLASS__.".".__FUNCTION__."() Transition '{$transition_name}' checking IN_ARC(s). Level: {$level}");
         // Se verifica que la "transition" esté habilitada para ejecutarse. Esto es, que tenga un "token" en cada "place" de entrada.
@@ -113,11 +138,11 @@ class WorkflowEngine
             // se programan las "tasks" disparadas por tiempo.
             debug(__CLASS__.".".__FUNCTION__."() Transition '{$transition_name}' Will now execute AUTO & TIME tasks . Level: {$level}");
             foreach ($new_tokens as $place_name => $time) {
-                $place = $this->_case->workflow->places[$place_name];
+                $place = $this->_case->workflow->getPlaces()[$place_name];
                 
                 if (is_array($place['out_arcs'])) {
                     foreach ($place['out_arcs'] as $next_transition_name) {
-                        $transition = $this->_case->workflow->transitions[$next_transition_name];
+                        $transition = $this->_case->workflow->getTransitions()[$next_transition_name];
                         
                         switch($transition['trigger']){
                             // Se ejecutan las "tasks" automáticas de forma recursiva.

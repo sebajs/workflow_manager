@@ -7,350 +7,20 @@
  * TODO: Testear grace con acumulación de deuda.
  * TODO: Hacer envío de mensajes en grace.
  * TODO: Cobrar cargo de reconexión.
- * TODO: Agregar estados públicos e internos.
+ * TODO: Separar estados públicos e internos.
  */
 
-class PrepaidLifecycleWorkflow
+class PrepaidLifecycleWorkflow extends Workflow
 {
-
-    public $places = array(
-        'idle' => array(
-            'out_arcs' => array(
-                'idle.setActive',
-            ),
-            'description' => array(
-                'hasService' => false,
-            ),
-        ),
-        'active' => array(
-            'out_arcs' => array(
-                'active.setGrace',
-                'active.setActiveWithMsgs',
-            ),
-            'description' => array(
-                'hasService' => true,
-            ),
-        ),
-        'active_with_msgs' => array(
-            'out_arcs' => array(
-                'active_with_msgs.sendMessage',
-                'active_with_msgs.setActive',
-                'active_with_msgs.setGrace',
-            ),
-            'description' => array(
-                'hasService' => true,
-            ),
-        ),
-        'grace' => array(
-            'out_arcs' => array(
-                'grace.setActive',
-                'grace.setPassive',
-            ),
-            'description' => array(
-                'hasService' => true,
-            ),
-        ),
-        'passive_accum' => array(
-            'out_arcs' => array(
-                'passive_accum.setActive',
-                'passive_accum.setPassiveNotAccum',
-            ),
-            'description' => array(
-                'hasService' => false,
-            ),
-        ),
-        'passive_not_accum' => array(
-            'out_arcs' => array(
-                'passive_not_accum.setActive',
-                'passive_not_accum.expropiateBalance',
-                'passive_not_accum.setExpired',
-            ),
-            'description' => array(
-                'hasService' => false,
-            ),
-        ),
-        'expired' => array(
-            'out_arcs' => array(
-                'expired.setActive',
-                'expired.setShutdown',
-            ),
-            'description' => array(
-                'hasService' => false,
-            ),
-        ),
-        'shutdown' => array(
-            'out_arcs' => array(),
-            'description' => array(
-                'hasService' => false,
-            ),
-        ),
-    );
-
-    public $transitions = array(
-        'idle.setActive' => array(
-            'trigger' => 'MSG',
-            'message' => 'idle.deposit',
-            'task' => 'setActive',
-            'in_arcs' => array(
-                'idle',
-            ),
-            'out_arcs' => array(
-                'active' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'ok',
-                ),
-                'idle' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'error',
-                ),
-            ),
-        ),
-        'active.setGrace' => array(
-            'trigger' => 'TIME',
-            'time_limit' => 'active.setGrace',
-            'task' => 'setGrace',
-            'in_arcs' => array(
-                'active',
-            ),
-            'out_arcs' => array(
-                'active' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'ok',
-                ),
-                'grace' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'error',
-                ),
-            ),
-        ),
-        'active.setActiveWithMsgs' => array(
-            'trigger' => 'TIME',
-            'time_limit' => 'active.setActiveWithMsgs',
-            'task' => 'setActiveWithMsgs',
-            'in_arcs' => array(
-                'active',
-            ),
-            'out_arcs' => array(
-                'active' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'ok',
-                ),
-                'active_with_msgs' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'error',
-                ),
-            ),
-        ),
-        'active_with_msgs.sendMessage' => array(
-            'trigger' => 'TIME',
-            'time_limit' => 'active_with_msgs.sendMessage',
-            'task' => 'sendMessage',
-            'in_arcs' => array(
-                'active_with_msgs',
-            ),
-            'out_arcs' => array(
-                'active_with_msgs' => array(
-                    'type' => 'SEQ',
-                ),
-            ),
-        ),
-        'active_with_msgs.setActive' => array(
-            'trigger' => 'MSG',
-            'message' => 'active_with_msgs.deposit',
-            'task' => 'setActive',
-            'in_arcs' => array(
-                'active_with_msgs',
-            ),
-            'out_arcs' => array(
-                'active' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'ok',
-                ),
-                'active_with_msgs' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'error',
-                ),
-            ),
-        ),
-        'active_with_msgs.setGrace' => array(
-            'trigger' => 'TIME',
-            'time_limit' => 'active_with_msgs.setGrace',
-            'task' => 'setGraceNoPayment',
-            'in_arcs' => array(
-                'active_with_msgs',
-            ),
-            'out_arcs' => array(
-                'grace' => array(
-                    'type' => 'SEQ',
-                ),
-            ),
-        ),
-        'grace.setPassive' => array(
-            'trigger' => 'TIME',
-            'time_limit' => 'grace.setPassive',
-            'task' => 'setPassive',
-            'in_arcs' => array(
-                'grace',
-            ),
-            'out_arcs' => array(
-                'passive_accum' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'accumulate',
-                ),
-                'passive_not_accum' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => '!accumulate',
-                ),
-            ),
-        ),
-        'grace.setActive' => array(
-            'trigger' => 'MSG',
-            'message' => 'grace.deposit',
-            'task' => 'setActive',
-            'in_arcs' => array(
-                'grace',
-            ),
-            'out_arcs' => array(
-                'active' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'ok',
-                ),
-                'grace' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'error',
-                ),
-            ),
-        ),
-        'passive_accum.setActive' => array(
-            'trigger' => 'MSG',
-            'message' => 'passive_accum.deposit',
-            'task' => 'setActive',
-            'in_arcs' => array(
-                'passive_accum',
-            ),
-            'out_arcs' => array(
-                'active' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'ok',
-                ),
-                'passive_accum' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'error',
-                ),
-            ),
-        ),
-        'passive_accum.setPassiveNotAccum' => array(
-            'trigger' => 'AUTO',
-            'task' => 'setPassiveNotAccum',
-            'in_arcs' => array(
-                'passive_accum',
-            ),
-            'out_arcs' => array(
-                'passive_not_accum' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'ok',
-                ),
-                'passive_accum' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'error',
-                ),
-            ),
-        ),    
-        'passive_not_accum.setActive' => array(
-            'trigger' => 'MSG',
-            'message' => 'passive_not_accum.deposit',
-            'task' => 'setActive',
-            'in_arcs' => array(
-                'passive_not_accum',
-            ),
-            'out_arcs' => array(
-                'active' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'ok',
-                ),
-                'passive_not_accum' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'error',
-                ),
-            ),
-        ),   
-        'passive_not_accum.expropiateBalance' => array(
-            'trigger' => 'TIME',
-            'time_limit' => 'passive_not_accum.expropiateBalance',
-            'task' => 'expropiateBalance',
-            'in_arcs' => array(
-                'passive_not_accum',
-            ),
-            'out_arcs' => array(
-                'passive_not_accum' => array(
-                    'type' => 'SEQ',
-                ),
-            ),
-        ), 
-        'passive_not_accum.setExpired' => array(
-            'trigger' => 'TIME',
-            'time_limit' => 'passive_not_accum.setExpired',
-            'task' => 'setExpired',
-            'in_arcs' => array(
-                'passive_not_accum',
-            ),
-            'out_arcs' => array(
-                'expired' => array(
-                    'type' => 'SEQ',
-                ),
-            ),
-        ),
-        'expired.setActive' => array(
-            'trigger' => 'MSG',
-            'message' => 'expired.deposit',
-            'task' => 'setActive',
-            'in_arcs' => array(
-                'expired',
-            ),
-            'out_arcs' => array(
-                'active' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'ok',
-                ),
-                'expired' => array(
-                    'type' => 'EXPLICIT_OR_SPLIT',
-                    'condition' => 'error',
-                ),
-            ),
-        ),
-        'expired.setShutdown' => array(
-            'trigger' => 'TIME',
-            'time_limit' => 'expired.setShutdown',
-            'task' => 'setShutdown',
-            'in_arcs' => array(
-                'expired',
-            ),
-            'out_arcs' => array(
-                'shutdown' => array(
-                    'type' => 'SEQ',
-                ),
-            ),
-        ),
-    );
-
-    private $_service_cost;
-    private $_grace_periods;
-    public $time_until_reconnection;
-    private $_reconnection_cost;
     private $_case_id;
     private $_account;
-    private $_accumulated_grace_periods;
 
     public function __construct($case_id)
     {
         $this->_case_id = $case_id;
         $this->_account = Account::getAccount($case_id);
-        
-        $this->_service_cost              = $this->_account->service_package->cost;
-        $this->_grace_periods             = $this->_account->service_package->grace;
-        $this->time_until_reconnection    = $this->_account->service_package->reconnection_time;
-        $this->_reconnection_cost         = $this->_account->service_package->reconnection_cost;
-        $this->_accumulated_grace_periods = $this->_account->service_package->debt_accum_limit;
+
+        $this->setConfig();
     }
 
     public function setActive($params = null)
@@ -362,16 +32,16 @@ class PrepaidLifecycleWorkflow
         
         switch ($this->_account->getStatus()) {
             case "idle":
-                $enough_credit = ($this->_account->getBalance() >= $this->_service_cost);
-                $withdrawal = $this->_service_cost;
+                $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
+                $withdrawal = $this->_account->service_package->cost;
                 break;
             case "active_with_msgs":
                 $enough_credit = true;
                 $withdrawal = 0;
                 break;
             case "grace":
-                $enough_credit = ($this->_account->getBalance() >= $this->_service_cost);
-                $withdrawal = $this->_service_cost;
+                $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
+                $withdrawal = $this->_account->service_package->cost;
                 break;
             case "passive_accum":
                 $enough_credit = ($this->_account->getBalance() >= 0);
@@ -379,11 +49,11 @@ class PrepaidLifecycleWorkflow
                 break;
             case "passive_not_accum":
                 $enough_credit = ($this->_account->getBalance() >= 0);
-                $withdrawal = $this->_service_cost;
+                $withdrawal = $this->_account->service_package->cost;
                 break;
             case "expired":
                 $enough_credit = ($this->_account->getBalance() >= 0);
-                $withdrawal = $this->_service_cost;
+                $withdrawal = $this->_account->service_package->cost;
                 break;
         }
         
@@ -434,7 +104,7 @@ class PrepaidLifecycleWorkflow
     {
         debug(__CLASS__.".".__FUNCTION__."() Executing.");
         
-        $enough_credit = ($this->_account->getBalance() >= $this->_service_cost);
+        $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
         
         if ($enough_credit) {
             debug(__CLASS__.".".__FUNCTION__."() Account has enough credit, wil not send messages!."); 
@@ -580,6 +250,329 @@ class PrepaidLifecycleWorkflow
         }
         
         return $res;
+    }
+
+    private function setConfig()
+    {
+        $this->places = array();
+        $this->places['idle'] = array(
+                                        'out_arcs' => array(
+                                            'idle.setActive',
+                                        ),
+                                        'description' => array(
+                                            'hasService' => false,
+                                        ),
+                                     );
+        $this->places['active'] = array(
+                                        'out_arcs' => array(
+                                            'active.setGrace',
+                                            'active.setActiveWithMsgs',
+                                        ),
+                                        'description' => array(
+                                            'hasService' => true,
+                                        ),
+                                     );
+        $this->places['active_with_msgs'] = array(
+                                        'out_arcs' => array(
+                                            'active_with_msgs.sendMessage',
+                                            'active_with_msgs.setActive',
+                                            'active_with_msgs.setGrace',
+                                        ),
+                                        'description' => array(
+                                            'hasService' => true,
+                                        ),
+                                     );
+        $this->places['grace'] = array(
+                                        'out_arcs' => array(
+                                            'grace.setActive',
+                                            'grace.setPassive',
+                                        ),
+                                        'description' => array(
+                                            'hasService' => true,
+                                        ),
+                                     );
+        $this->places['passive_accum'] = array(
+                                        'out_arcs' => array(
+                                            'passive_accum.setActive',
+                                            'passive_accum.setPassiveNotAccum',
+                                        ),
+                                        'description' => array(
+                                            'hasService' => false,
+                                        ),
+                                     );
+        $this->places['passive_not_accum'] = array(
+                                        'out_arcs' => array(
+                                            'passive_not_accum.setActive',
+                                            'passive_not_accum.expropiateBalance',
+                                            'passive_not_accum.setExpired',
+                                        ),
+                                        'description' => array(
+                                            'hasService' => false,
+                                        ),
+                                     );
+        $this->places['expired'] = array(
+                                        'out_arcs' => array(
+                                            'expired.setActive',
+                                            'expired.setShutdown',
+                                        ),
+                                        'description' => array(
+                                            'hasService' => false,
+                                        ),
+                                     );
+        $this->places['shutdown'] = array(
+                                        'out_arcs' => array(),
+                                        'description' => array(
+                                            'hasService' => false,
+                                        ),
+                                     );
+
+        $this->transitions = array(
+            'idle.setActive' => array(
+                'trigger' => 'MSG',
+                'message' => 'idle.deposit',
+                'task' => 'setActive',
+                'in_arcs' => array(
+                    'idle',
+                ),
+                'out_arcs' => array(
+                    'active' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'ok',
+                    ),
+                    'idle' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'error',
+                    ),
+                ),
+            ),
+            'active.setGrace' => array(
+                'trigger' => 'TIME',
+                'time_limit' => 'active.setGrace',
+                'task' => 'setGrace',
+                'in_arcs' => array(
+                    'active',
+                ),
+                'out_arcs' => array(
+                    'active' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'ok',
+                    ),
+                    'grace' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'error',
+                    ),
+                ),
+            ),
+            'active.setActiveWithMsgs' => array(
+                'trigger' => 'TIME',
+                'time_limit' => 'active.setActiveWithMsgs',
+                'task' => 'setActiveWithMsgs',
+                'in_arcs' => array(
+                    'active',
+                ),
+                'out_arcs' => array(
+                    'active' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'ok',
+                    ),
+                    'active_with_msgs' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'error',
+                    ),
+                ),
+            ),
+            'active_with_msgs.sendMessage' => array(
+                'trigger' => 'TIME',
+                'time_limit' => 'active_with_msgs.sendMessage',
+                'task' => 'sendMessage',
+                'in_arcs' => array(
+                    'active_with_msgs',
+                ),
+                'out_arcs' => array(
+                    'active_with_msgs' => array(
+                        'type' => 'SEQ',
+                    ),
+                ),
+            ),
+            'active_with_msgs.setActive' => array(
+                'trigger' => 'MSG',
+                'message' => 'active_with_msgs.deposit',
+                'task' => 'setActive',
+                'in_arcs' => array(
+                    'active_with_msgs',
+                ),
+                'out_arcs' => array(
+                    'active' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'ok',
+                    ),
+                    'active_with_msgs' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'error',
+                    ),
+                ),
+            ),
+            'active_with_msgs.setGrace' => array(
+                'trigger' => 'TIME',
+                'time_limit' => 'active_with_msgs.setGrace',
+                'task' => 'setGraceNoPayment',
+                'in_arcs' => array(
+                    'active_with_msgs',
+                ),
+                'out_arcs' => array(
+                    'grace' => array(
+                        'type' => 'SEQ',
+                    ),
+                ),
+            ),
+            'grace.setPassive' => array(
+                'trigger' => 'TIME',
+                'time_limit' => 'grace.setPassive',
+                'task' => 'setPassive',
+                'in_arcs' => array(
+                    'grace',
+                ),
+                'out_arcs' => array(
+                    'passive_accum' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'accumulate',
+                    ),
+                    'passive_not_accum' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => '!accumulate',
+                    ),
+                ),
+            ),
+            'grace.setActive' => array(
+                'trigger' => 'MSG',
+                'message' => 'grace.deposit',
+                'task' => 'setActive',
+                'in_arcs' => array(
+                    'grace',
+                ),
+                'out_arcs' => array(
+                    'active' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'ok',
+                    ),
+                    'grace' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'error',
+                    ),
+                ),
+            ),
+            'passive_accum.setActive' => array(
+                'trigger' => 'MSG',
+                'message' => 'passive_accum.deposit',
+                'task' => 'setActive',
+                'in_arcs' => array(
+                    'passive_accum',
+                ),
+                'out_arcs' => array(
+                    'active' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'ok',
+                    ),
+                    'passive_accum' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'error',
+                    ),
+                ),
+            ),
+            'passive_accum.setPassiveNotAccum' => array(
+                'trigger' => 'AUTO',
+                'task' => 'setPassiveNotAccum',
+                'in_arcs' => array(
+                    'passive_accum',
+                ),
+                'out_arcs' => array(
+                    'passive_not_accum' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'ok',
+                    ),
+                    'passive_accum' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'error',
+                    ),
+                ),
+            ),
+            'passive_not_accum.setActive' => array(
+                'trigger' => 'MSG',
+                'message' => 'passive_not_accum.deposit',
+                'task' => 'setActive',
+                'in_arcs' => array(
+                    'passive_not_accum',
+                ),
+                'out_arcs' => array(
+                    'active' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'ok',
+                    ),
+                    'passive_not_accum' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'error',
+                    ),
+                ),
+            ),
+            'passive_not_accum.expropiateBalance' => array(
+                'trigger' => 'TIME',
+                'time_limit' => 'passive_not_accum.expropiateBalance',
+                'task' => 'expropiateBalance',
+                'in_arcs' => array(
+                    'passive_not_accum',
+                ),
+                'out_arcs' => array(
+                    'passive_not_accum' => array(
+                        'type' => 'SEQ',
+                    ),
+                ),
+            ),
+            'passive_not_accum.setExpired' => array(
+                'trigger' => 'TIME',
+                'time_limit' => 'passive_not_accum.setExpired',
+                'task' => 'setExpired',
+                'in_arcs' => array(
+                    'passive_not_accum',
+                ),
+                'out_arcs' => array(
+                    'expired' => array(
+                        'type' => 'SEQ',
+                    ),
+                ),
+            ),
+            'expired.setActive' => array(
+                'trigger' => 'MSG',
+                'message' => 'expired.deposit',
+                'task' => 'setActive',
+                'in_arcs' => array(
+                    'expired',
+                ),
+                'out_arcs' => array(
+                    'active' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'ok',
+                    ),
+                    'expired' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'error',
+                    ),
+                ),
+            ),
+            'expired.setShutdown' => array(
+                'trigger' => 'TIME',
+                'time_limit' => 'expired.setShutdown',
+                'task' => 'setShutdown',
+                'in_arcs' => array(
+                    'expired',
+                ),
+                'out_arcs' => array(
+                    'shutdown' => array(
+                        'type' => 'SEQ',
+                    ),
+                ),
+            ),
+        );
+
     }
     
 }

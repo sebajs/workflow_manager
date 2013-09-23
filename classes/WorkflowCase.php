@@ -4,10 +4,17 @@ class WorkflowCase extends Show
 {
     private $_workflow_id;
     private $_case_id;
-    
+
+    /**
+     * @var Workflow
+     */
     public $workflow;
     public $tokens = array();
 
+    /**
+     * @param int     $workflow_id
+     * @param Account $account
+     */
     public function __construct($workflow_id, $account)
     {
         $this->_workflow_id = $workflow_id;
