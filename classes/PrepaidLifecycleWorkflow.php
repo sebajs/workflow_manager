@@ -1,7 +1,6 @@
 <?php
 
 /*
- * TODO: Depósito negativo!
  * TODO: Hacer envío de mensajes en grace.
  * TODO: Cobrar cargo de reconexión.
  * TODO: Separar estados públicos e internos.
@@ -83,8 +82,6 @@ class PrepaidLifecycleWorkflow extends Workflow
 
         $last_trans = array_pop($transactions);
 
-        print_r($last_trans);
-
         if ($last_trans['type'] == 'deposit') {
             $res = 'active';
         } else {
@@ -92,8 +89,6 @@ class PrepaidLifecycleWorkflow extends Workflow
             while ($prev_trans['type'] != 'deposit') {
                 $prev_trans = array_pop($transactions);
             }
-
-            print_r($prev_trans);
 
             $res = $prev_trans['status'];
             $this->_account->setStatus($res);
