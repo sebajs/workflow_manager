@@ -4,10 +4,11 @@
  * TODO: Depósito negativo!
  * TODO: Testear reactivaciones.
  * TODO: Testear active a grace sin mensajes.
- * TODO: Testear grace con acumulación de deuda.
  * TODO: Hacer envío de mensajes en grace.
  * TODO: Cobrar cargo de reconexión.
  * TODO: Separar estados públicos e internos.
+ * TODO: No renovar las fechas, usar pasaje a grace como base.
+ * TODO: De grace a active mueve la fecha 1 período desde ese momento.
  */
 
 class PrepaidLifecycleWorkflow extends Workflow
@@ -211,8 +212,6 @@ class PrepaidLifecycleWorkflow extends Workflow
         return $res;
     }
     
-    //---
-    
     public function getTaskDate($period)
     {
         debug(__CLASS__.".".__FUNCTION__."() Executing. Period: '{$period}'"); 
@@ -235,7 +234,7 @@ class PrepaidLifecycleWorkflow extends Workflow
             case 'grace.setPassive':
                 $res = strtotime("+".$this->_account->service_package->grace, time());
                 break;
-            case 'passive_accum.accumulatePeriodDebt':
+            case 'passive_accum.setPassiveNotAccum':
                 $res = strtotime("+".$this->_account->service_package->duration, time());
                 break;
             case 'passive_not_accum.expropiateBalance':
@@ -480,7 +479,8 @@ class PrepaidLifecycleWorkflow extends Workflow
                 ),
             ),
             'passive_accum.setPassiveNotAccum' => array(
-                'trigger' => 'AUTO',
+                'trigger' => 'TIME',
+                'time_limit' => 'passive_accum.setPassiveNotAccum',
                 'task' => 'setPassiveNotAccum',
                 'in_arcs' => array(
                     'passive_accum',

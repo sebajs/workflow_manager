@@ -7,6 +7,8 @@ class GfxGenerator
      * @param integer      $account_id
      * @param WorkflowCase $case
      * @param Workflow     $flow
+     *
+     * @return string
      */
     public function generate($account_id, $case, $flow)
     {
@@ -75,11 +77,13 @@ class GfxGenerator
 
         file_put_contents($datafile, $rawdata);
 
-        print_r($rawdata);
+        //debug($rawdata);
 
         exec("dot -Tpng {$datafile} > {$gfxfile}");
 
-        echo "\n";
-        echo "Done! Graph file: {$gfxfile}\n";
+        //debug("\n");
+        //debug("Done! Graph file: {$gfxfile}\n");
+
+        return $gfxfile;
     }
 }
