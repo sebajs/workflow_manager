@@ -18,7 +18,7 @@ class WorkflowCase extends Show
         if (!$this->loadFromFile()) {
             $this->tokens[$account->getStatus()] = date('YmdHis');
             $this->saveToFile();
-        }        
+        }
     }
     
     public function getId()

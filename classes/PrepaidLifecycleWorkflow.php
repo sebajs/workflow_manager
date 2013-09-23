@@ -1,5 +1,16 @@
 <?php
 
+/*
+ * TODO: Depósito negativo!
+ * TODO: Mostrar en gfx donde está el token.
+ * TODO: Testear reactivaciones.
+ * TODO: Testear active a grace sin mensajes.
+ * TODO: Testear grace con acumulación de deuda.
+ * TODO: Hacer envío de mensajes en grace.
+ * TODO: Cobrar cargo de reconexión.
+ * TODO: Agregar estados públicos e internos.
+ */
+
 class PrepaidLifecycleWorkflow
 {
 

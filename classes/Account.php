@@ -28,7 +28,7 @@ class Account extends Show
         $this->service_package->cost              = 50;
         $this->service_package->reconnection_time = 90;
         $this->service_package->reconnection_cost = 25;
-        $this->service_package->debt_accum_limit  = 0;
+        $this->service_package->debt_accum_limit  = 2;
         $this->debt_accumulations                 = 0;
         
         $this->loadFromFile();

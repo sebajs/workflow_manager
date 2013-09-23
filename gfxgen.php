@@ -9,10 +9,10 @@ $gfxfile    = "./gfx/{$account_id}_gfx.png";
 
 $account = new Account($account_id);
 $workflow_case = new WorkflowCase('PrepaidLifecycleWorkflow', $account);
-$flow = new PrepaidLifecycleWorkflow($account_id);
+$flow = $workflow_case->workflow;
 
 // gfx start
-$rawdata = 'digraph PrepaidLifecycleWorkflow {';
+$rawdata = 'digraph gfx {';
 
 // places
 foreach ($flow->places AS $place => $config) {
