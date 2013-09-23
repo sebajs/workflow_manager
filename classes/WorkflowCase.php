@@ -25,6 +25,31 @@ class WorkflowCase extends Show
     {
         return $this->_case_id;
     }
+
+    public function getTokens()
+    {
+        return $this->tokens;
+    }
+
+    public function getTokenAtPlace($place)
+    {
+        return ($this->isTokenAtPlace($place)) ? $this->tokens[$place] : null;
+    }
+
+    public function isTokenAtPlace($place)
+    {
+        return !empty($this->tokens[$place]);
+    }
+
+    public function setTokenAtPlace($place, $token)
+    {
+        $this->tokens[$place] = $token;
+    }
+
+    public function clearTokenAtPlace($place)
+    {
+        unset($this->tokens[$place]);
+    }
     
     public function save()
     {

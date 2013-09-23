@@ -42,11 +42,11 @@ class WorkflowEngine
         // Se verifica que la "transition" esté habilitada para ejecutarse. Esto es, que tenga un "token" en cada "place" de entrada.
         $original_places = array();
         $enabled = true;
-        foreach ($transition['in_arcs'] as $arc) {
-            if (empty($this->_case->tokens[$arc])) {
-                $enabled = false;
+        foreach ($transition['in_arcs'] as $place) {
+            if ($this->_case->isTokenAtPlace($place)) {
+                $original_places[] = $place;
             } else {
-                $original_places[] = $arc;
+                $enabled = false;
             }
         }
         
@@ -68,8 +68,8 @@ class WorkflowEngine
             
             // Se eliminan los "tokens" de los "places" de entrada.
             debug(__CLASS__.".".__FUNCTION__."() Transition '{$transition_name}' cleaning all IN_ARC(s) token(s). Level: {$level}"); 
-            foreach ($transition['in_arcs'] as $arc) {
-                unset($this->_case->tokens[$arc]);
+            foreach ($transition['in_arcs'] as $place) {
+                $this->_case->clearTokenAtPlace($place);
             }
 
             debug(__CLASS__.".".__FUNCTION__."() Transition '{$transition_name}' finding OUT_ARC(s) where to set the token(s). Level: {$level}");
@@ -84,12 +84,12 @@ class WorkflowEngine
                         if ($condition['condition'] == $result) {
                             debug(__CLASS__.".".__FUNCTION__."() Transition '{$transition_name}' OUT_ARC '{$destination_place}' applies! Level: {$level}"); 
                             
-                            if (empty($this->_case->tokens[$destination_place])) {
-                                debug(__CLASS__.".".__FUNCTION__."() Transition '{$transition_name}' setting token in '{$destination_place}' PLACE. Level: {$level}"); 
-                                $this->_case->tokens[$destination_place] = $time;
+                            if (!$this->_case->isTokenAtPlace($destination_place)) {
+                                debug(__CLASS__.".".__FUNCTION__."() Transition '{$transition_name}' setting token in '{$destination_place}' PLACE. Level: {$level}");
+                                $this->_case->setTokenAtPlace($destination_place, $time);
                             }
                             
-                            $new_tokens[$destination_place] = $this->_case->tokens[$destination_place];
+                            $new_tokens[$destination_place] = $this->_case->getTokenAtPlace($destination_place);
                         } else {
                             debug(__CLASS__.".".__FUNCTION__."() Transition '{$transition_name}' OUT_ARC '{$destination_place}' does not apply. Level: {$level}"); 
                         }
@@ -99,11 +99,11 @@ class WorkflowEngine
                     default:
                         debug(__CLASS__.".".__FUNCTION__."() Transition '{$transition_name}' OUT_ARC '{$destination_place}' type always applies! Level: {$level}"); 
                             
-                        if (empty($this->_case->tokens[$destination_place])) {
+                        if (!$this->_case->isTokenAtPlace($destination_place)) {
                             debug(__CLASS__.".".__FUNCTION__."() Transition '{$transition_name}' setting token in '{$destination_place}' PLACE. Level: {$level}"); 
-                            $this->_case->tokens[$destination_place] = $time;
+                            $this->_case->setTokenAtPlace($destination_place, $time);
                         }
-                        $new_tokens[$destination_place] = $this->_case->tokens[$destination_place];
+                        $new_tokens[$destination_place] = $this->_case->getTokenAtPlace($destination_place);
                         break;
                 }
                 

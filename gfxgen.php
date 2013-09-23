@@ -8,23 +8,24 @@ $datafile   = "./gfx/{$account_id}_gfx.dat";
 $gfxfile    = "./gfx/{$account_id}_gfx.png";
 
 $account = new Account($account_id);
-$workflow_case = new WorkflowCase('PrepaidLifecycleWorkflow', $account);
-$flow = $workflow_case->workflow;
+$case = new WorkflowCase('PrepaidLifecycleWorkflow', $account);
+$flow = $case->workflow;
 
 // gfx start
 $rawdata = 'digraph gfx {';
 
 // places
 foreach ($flow->places AS $place => $config) {
+    $token = ($case->isTokenAtPlace($place)) ? ',peripheries=3' : ',peripheries=1';
     $label = str_replace("_", "\\n", $place);
     $color = ($config['description']['hasService']) ? 'green' : 'red';
-    $rawdata .= "node [shape=circle,color={$color},fixedsize=false,label=\"{$label}\"]; \"{$place}\";\n";
+    $rawdata .= "node [shape=circle,color={$color},fixedsize=false,label=\"{$label}\"{$token}]; \"{$place}\";\n";
 }
 
 // transitions
 foreach ($flow->transitions AS $transition => $config) {
     $label = str_replace(".", "\\n.", $transition);
-    $rawdata .= "node [shape=box,color=black,fixedsize=false,label=\"{$label}\"]; \"{$transition}\";\n";
+    $rawdata .= "node [shape=box,color=black,fixedsize=false,label=\"{$label}\",peripheries=1]; \"{$transition}\";\n";
 
     if (is_array($config['in_arcs'])) {
         foreach ($config['in_arcs'] AS $target) {
