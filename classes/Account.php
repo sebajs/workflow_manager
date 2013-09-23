@@ -2,24 +2,24 @@
 
 class Account extends Show
 {
-    private $id;
-    
-    protected $balance          = 0;
-    private $debt_accumulations = 0;
-    protected $status           = 'idle';
-    public  $service_package;
-    private $transactions       = array();
+    private   $id;
+    protected $balance            = 0;
+    private   $debt_accumulations = 0;
+    protected $status             = 'idle';
+    public    $service_package;
+    private   $transactions       = array();
     
     public function __construct($account_id)
     {
         $this->id = $account_id;
+        $this->debt_accumulations = 0;
 
         $this->service_package                    = new stdClass();
-        $this->service_package->duration          = "40 seconds";
+        $this->service_package->duration          = "30 seconds";
         $this->service_package->grace             = "10 seconds";
         
-        $this->service_package->fromActiveToMessaging   = "30 seconds";
-        $this->service_package->fromMessagingToGrace    = "10 seconds";
+        $this->service_package->fromActiveToMessaging   = null;//"20 seconds";
+        $this->service_package->fromMessagingToGrace    = null;//"10 seconds";
         $this->service_package->messagingPeriod         = "3 seconds";
         $this->service_package->fromPassiveToExpropiate = "20 seconds";
         $this->service_package->fromPassiveToExpired    = "30 seconds";
@@ -28,9 +28,8 @@ class Account extends Show
         $this->service_package->cost              = 50;
         $this->service_package->reconnection_time = 90;
         $this->service_package->reconnection_cost = 25;
-        $this->service_package->debt_accum_limit  = 0;
-        $this->debt_accumulations                 = 0;
-        
+        $this->service_package->debt_accum_limit  = 2;
+
         $this->loadFromFile();
     }
     
@@ -81,25 +80,31 @@ class Account extends Show
     public function deposit($amount, $comment = null)
     {
         $this->balance += $amount;
-        $this->transactions[] = array(
-            'date' => date('Y-m-d H:i:s'),
-            'type' => 'deposit',
-            'amount' => $amount,
-            'comment' => $comment,
-        );
+        $this->addTransaction('deposit', $amount, $comment);
         $this->saveToFile();
     }
     
     public function withdraw($amount, $comment = null)
     {
         $this->balance -= $amount;
-        $this->transactions[] = array(
-            'date' => date('Y-m-d H:i:s'),
-            'type' => 'withdraw',
-            'amount' => $amount,
-            'comment' => $comment,
-        );
+        $this->addTransaction('withdraw', $amount, $comment);
         $this->saveToFile();
+    }
+
+    private function addTransaction($type, $amount, $comment)
+    {
+        $this->transactions[] = array(
+            'date'    => date('Y-m-d H:i:s'),
+            'type'    => $type,
+            'amount'  => $amount,
+            'comment' => $comment,
+            'status'  => $this->status,
+        );
+    }
+
+    public function getLastTransactions()
+    {
+        return $this->transactions;
     }
     
     private function loadFromFile()

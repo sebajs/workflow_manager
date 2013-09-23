@@ -9,7 +9,12 @@ $task_scheduler = new TaskScheduler();
 $workflow_engine = new WorkflowEngine($task_scheduler);
 
 $account = new Account($account_id);
-$account->deposit($amount);
+
+if ($amount >= 0) {
+    $account->deposit($amount);
+} else {
+    $account->withdraw(abs($amount));
+}
 
 $workflow_case = new WorkflowCase('PrepaidLifecycleWorkflow', $account);
 $workflow_engine->setCase($workflow_case);

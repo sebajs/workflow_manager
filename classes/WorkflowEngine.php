@@ -155,9 +155,11 @@ class WorkflowEngine
                             //             (eso lo maneja el task_scheduler).
                             case 'TIME':
                                 debug(__CLASS__.".".__FUNCTION__."() Transition '{$transition_name}' Found TIME task '{$next_transition_name}'. Level: {$level}");
-                                $this->_task_scheduler->putTask(date('YmdHis', $this->_case->workflow->getTaskDate($transition['time_limit'])), 
-                                                                $next_transition_name,
-                                                                $this->_case->getId());
+
+                                $time_limit = $this->_case->workflow->getTaskDate($transition['time_limit']);
+                                if ($time_limit !== null) {
+                                    $this->_task_scheduler->putTask(date('YmdHis', $time_limit),  $next_transition_name, $this->_case->getId());
+                                }
                                 break;
                         }
                     }

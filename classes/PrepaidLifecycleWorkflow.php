@@ -2,8 +2,6 @@
 
 /*
  * TODO: Depósito negativo!
- * TODO: Testear reactivaciones.
- * TODO: Testear active a grace sin mensajes.
  * TODO: Hacer envío de mensajes en grace.
  * TODO: Cobrar cargo de reconexión.
  * TODO: Separar estados públicos e internos.
@@ -24,68 +22,107 @@ class PrepaidLifecycleWorkflow extends Workflow
         $this->setConfig();
     }
 
-    public function setActive($params = null)
+    public function checkBalanceForActive($params = null)
     {
-        debug(__CLASS__.".".__FUNCTION__."() Executing. Will check account's balance and account's service cost."); 
-        
+        debug(__CLASS__.".".__FUNCTION__."() Executing. Will check account's balance and account's service cost.");
+
+        $res           = 'error';
         $enough_credit = false;
-        $withdrawal = 0;
-        
+        $withdrawal    = 0;
+
         switch ($this->_account->getStatus()) {
             case "idle":
                 $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
-                $withdrawal = $this->_account->service_package->cost;
+                $withdrawal    = $this->_account->service_package->cost;
                 break;
             case "active_with_msgs":
                 $enough_credit = true;
-                $withdrawal = 0;
+                $withdrawal    = 0;
                 break;
             case "grace":
                 $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
-                $withdrawal = $this->_account->service_package->cost;
+                $withdrawal    = $this->_account->service_package->cost;
                 break;
             case "passive_accum":
-                $enough_credit = ($this->_account->getBalance() >= 0);
-                $withdrawal = 0;
+                $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
+                $withdrawal    = $this->_account->service_package->cost;
                 break;
             case "passive_not_accum":
-                $enough_credit = ($this->_account->getBalance() >= 0);
-                $withdrawal = $this->_account->service_package->cost;
+                $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
+                $withdrawal    = $this->_account->service_package->cost;
                 break;
             case "expired":
-                $enough_credit = ($this->_account->getBalance() >= 0);
-                $withdrawal = $this->_account->service_package->cost;
+                $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
+                $withdrawal    = $this->_account->service_package->cost;
                 break;
         }
-        
+
         if ($enough_credit) {
             debug(__CLASS__.".".__FUNCTION__."() account's balance ({$this->_account->getBalance()}) ".
-                                                    "is enough to cover account's reactivation.");
+                "is enough to cover account's reactivation.");
 
-            debug(__CLASS__.".".__FUNCTION__."() Will withdraw {$withdrawal} and change status to ACTIVE!");
+            debug(__CLASS__.".".__FUNCTION__."() Will withdraw {$withdrawal}.");
             if ($withdrawal > 0) {
                 $this->_account->chargeService();
             }
-            $this->_account->setStatus('active');
-            $ret = 'ok';
+            $this->setActive();
+            $res = 'ok';
         } else {
             debug(__CLASS__.".".__FUNCTION__."() account's balance ({$this->_account->getBalance()}) ".
-                                                    "is NOT enough to cover account's reactivation."); 
-            $ret = 'error';
+                "is NOT enough to cover account's reactivation.");
         }
-        
-        return $ret;
+
+        return $res;
+    }
+
+    public function checkDeposit($params = null)
+    {
+        debug(__CLASS__.".".__FUNCTION__."() Executing.");
+
+        $transactions = $this->_account->getLastTransactions();
+
+        $last_trans = array_pop($transactions);
+
+        print_r($last_trans);
+
+        if ($last_trans['type'] == 'deposit') {
+            $res = 'active';
+        } else {
+            $prev_trans = array_pop($transactions);
+            while ($prev_trans['type'] != 'deposit') {
+                $prev_trans = array_pop($transactions);
+            }
+
+            print_r($prev_trans);
+
+            $res = $prev_trans['status'];
+            $this->_account->setStatus($res);
+        }
+
+        return $res;
+    }
+
+    public function setActive($params = null)
+    {
+        debug(__CLASS__.".".__FUNCTION__."() Executing.");
+        debug(__CLASS__.".".__FUNCTION__."() Setting status to ACTIVE!.");
+        $this->_account->setStatus('active');
+
+        $res = 'ok';
+        return $res;
     }
 
     public function setGrace($params = null)
     {
-        debug(__CLASS__.".".__FUNCTION__."() Executing. Will use setActive to perform service cost payment."); 
-        
-        $res = $this->setActive();
-        
-        if ($res == 'error') {
-            debug(__CLASS__.".".__FUNCTION__."() Setting status to GRACE!."); 
+        debug(__CLASS__.".".__FUNCTION__."() Executing. Will perform service cost payment.");
+
+        if ($this->_account->getBalance() >= $this->_account->service_package->cost) {
+            $this->_account->chargeService();
+            $res = 'ok';
+        } else {
+            debug(__CLASS__.".".__FUNCTION__."() Setting status to GRACE!.");
             $this->_account->setStatus('grace');
+            $res = 'error';
         }
         
         return $res;
@@ -145,15 +182,6 @@ class PrepaidLifecycleWorkflow extends Workflow
 
         }
 
-        return $res;
-    }
-    
-    public function accumulatePeriodDebt($params = null)
-    {
-        debug(__CLASS__.".".__FUNCTION__."() Executing.");
-        $this->_account->chargeService();
-        
-        $res = 'ok';
         return $res;
     }
     
@@ -223,7 +251,10 @@ class PrepaidLifecycleWorkflow extends Workflow
                 $res = strtotime("+".$this->_account->service_package->duration, time());
                 break;
             case 'active.setActiveWithMsgs':
-                $res = strtotime("+".$this->_account->service_package->fromActiveToMessaging, time());
+                $period = $this->_account->service_package->fromActiveToMessaging;
+                if ($period !== null) {
+                    $res = strtotime("+".$period, time());
+                }
                 break;
             case 'active_with_msgs.sendMessage':
                 $res = strtotime("+".$this->_account->service_package->messagingPeriod, time());
@@ -256,7 +287,7 @@ class PrepaidLifecycleWorkflow extends Workflow
         $this->places = array();
         $this->places['idle'] = array(
                                         'out_arcs' => array(
-                                            'idle.setActive',
+                                            'idle.checkBalanceForActive',
                                         ),
                                         'description' => array(
                                             'hasService' => false,
@@ -264,6 +295,7 @@ class PrepaidLifecycleWorkflow extends Workflow
                                      );
         $this->places['active'] = array(
                                         'out_arcs' => array(
+                                            'active.checkBalanceForActive',
                                             'active.setGrace',
                                             'active.setActiveWithMsgs',
                                         ),
@@ -274,7 +306,7 @@ class PrepaidLifecycleWorkflow extends Workflow
         $this->places['active_with_msgs'] = array(
                                         'out_arcs' => array(
                                             'active_with_msgs.sendMessage',
-                                            'active_with_msgs.setActive',
+                                            'active_with_msgs.checkBalanceForActive',
                                             'active_with_msgs.setGrace',
                                         ),
                                         'description' => array(
@@ -283,7 +315,7 @@ class PrepaidLifecycleWorkflow extends Workflow
                                      );
         $this->places['grace'] = array(
                                         'out_arcs' => array(
-                                            'grace.setActive',
+                                            'grace.checkBalanceForActive',
                                             'grace.setPassive',
                                         ),
                                         'description' => array(
@@ -292,7 +324,7 @@ class PrepaidLifecycleWorkflow extends Workflow
                                      );
         $this->places['passive_accum'] = array(
                                         'out_arcs' => array(
-                                            'passive_accum.setActive',
+                                            'passive_accum.checkBalanceForActive',
                                             'passive_accum.setPassiveNotAccum',
                                         ),
                                         'description' => array(
@@ -301,7 +333,7 @@ class PrepaidLifecycleWorkflow extends Workflow
                                      );
         $this->places['passive_not_accum'] = array(
                                         'out_arcs' => array(
-                                            'passive_not_accum.setActive',
+                                            'passive_not_accum.checkBalanceForActive',
                                             'passive_not_accum.expropiateBalance',
                                             'passive_not_accum.setExpired',
                                         ),
@@ -311,7 +343,7 @@ class PrepaidLifecycleWorkflow extends Workflow
                                      );
         $this->places['expired'] = array(
                                         'out_arcs' => array(
-                                            'expired.setActive',
+                                            'expired.checkBalanceForActive',
                                             'expired.setShutdown',
                                         ),
                                         'description' => array(
@@ -326,10 +358,10 @@ class PrepaidLifecycleWorkflow extends Workflow
                                      );
 
         $this->transitions = array(
-            'idle.setActive' => array(
+            'idle.checkBalanceForActive' => array(
                 'trigger' => 'MSG',
                 'message' => 'idle.deposit',
-                'task' => 'setActive',
+                'task' => 'checkBalanceForActive',
                 'in_arcs' => array(
                     'idle',
                 ),
@@ -341,6 +373,36 @@ class PrepaidLifecycleWorkflow extends Workflow
                     'idle' => array(
                         'type' => 'EXPLICIT_OR_SPLIT',
                         'condition' => 'error',
+                    ),
+                ),
+            ),
+            'active.checkDeposit' => array(
+                'trigger' => 'MSG',
+                'message' => 'active.deposit',
+                'task' => 'checkDeposit',
+                'in_arcs' => array(
+                    'active',
+                ),
+                'out_arcs' => array(
+                    'active' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'active',
+                    ),
+                    'grace' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'grace',
+                    ),
+                    'passive_accum' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'passive_accum',
+                    ),
+                    'passive_not_accum' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'passive_not_accum',
+                    ),
+                    'expired' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'expired',
                     ),
                 ),
             ),
@@ -393,10 +455,10 @@ class PrepaidLifecycleWorkflow extends Workflow
                     ),
                 ),
             ),
-            'active_with_msgs.setActive' => array(
+            'active_with_msgs.checkBalanceForActive' => array(
                 'trigger' => 'MSG',
                 'message' => 'active_with_msgs.deposit',
-                'task' => 'setActive',
+                'task' => 'checkBalanceForActive',
                 'in_arcs' => array(
                     'active_with_msgs',
                 ),
@@ -442,10 +504,10 @@ class PrepaidLifecycleWorkflow extends Workflow
                     ),
                 ),
             ),
-            'grace.setActive' => array(
+            'grace.checkBalanceForActive' => array(
                 'trigger' => 'MSG',
                 'message' => 'grace.deposit',
-                'task' => 'setActive',
+                'task' => 'checkBalanceForActive',
                 'in_arcs' => array(
                     'grace',
                 ),
@@ -460,10 +522,10 @@ class PrepaidLifecycleWorkflow extends Workflow
                     ),
                 ),
             ),
-            'passive_accum.setActive' => array(
+            'passive_accum.checkBalanceForActive' => array(
                 'trigger' => 'MSG',
                 'message' => 'passive_accum.deposit',
-                'task' => 'setActive',
+                'task' => 'checkBalanceForActive',
                 'in_arcs' => array(
                     'passive_accum',
                 ),
@@ -496,10 +558,10 @@ class PrepaidLifecycleWorkflow extends Workflow
                     ),
                 ),
             ),
-            'passive_not_accum.setActive' => array(
+            'passive_not_accum.checkBalanceForActive' => array(
                 'trigger' => 'MSG',
                 'message' => 'passive_not_accum.deposit',
-                'task' => 'setActive',
+                'task' => 'checkBalanceForActive',
                 'in_arcs' => array(
                     'passive_not_accum',
                 ),
@@ -540,10 +602,10 @@ class PrepaidLifecycleWorkflow extends Workflow
                     ),
                 ),
             ),
-            'expired.setActive' => array(
+            'expired.checkBalanceForActive' => array(
                 'trigger' => 'MSG',
                 'message' => 'expired.deposit',
-                'task' => 'setActive',
+                'task' => 'checkBalanceForActive',
                 'in_arcs' => array(
                     'expired',
                 ),
