@@ -216,15 +216,8 @@ class PrepaidLifecycleWorkflow extends Workflow
         debug(__CLASS__.".".__FUNCTION__."() Executing.");
         
         $res = 'ok';
-        
-        $balance = $this->_account->getBalance();
-        
-        if ($balance > 0) {
-            debug(__CLASS__.".".__FUNCTION__."() account's balance ({$balance}) will be expropiated."); 
-            $this->_account->expropiateBalance();
-        } else {
-            debug(__CLASS__.".".__FUNCTION__."() account's balance ({$balance}) is not expropiatable."); 
-        }
+
+        $this->_account->expropiateBalance();
         
         return $res;
     }
@@ -256,47 +249,90 @@ class PrepaidLifecycleWorkflow extends Workflow
         $res = null;
         
         switch ($period) {
-            case 'active.setGrace':
-                $res = strtotime("+".$this->_account->service_package->duration, time());
-                break;
             case 'active.setActiveWithMsgs':
+                // El tiempo debe contarse desde que se puso la cuenta en active.
+                $time = $this->_account->getLastStatusSetting('active');
+                $time = ($time !== null) ? strtotime($time) : time();
                 $period = $this->_account->service_package->fromActiveToMessaging;
                 if ($period !== null) {
-                    $res = strtotime("+".$period, time());
+                    $res = strtotime("+".$period, $time);
                 }
                 break;
+            case 'active.setGrace':
+                // El tiempo debe contarse desde que se puso la cuenta en active.
+                $time = $this->_account->getLastStatusSetting('active');
+                $time = ($time !== null) ? strtotime($time) : time();
+                $res = strtotime("+".$this->_account->service_package->duration, $time);
+                break;
             case 'active_with_msgs.sendMessage':
-                $res = strtotime("+".$this->_account->service_package->activeMessagingPeriod, time());
+                // El tiempo debe contarse desde que se puso la cuenta en active_with_msgs.
+                $time = $this->_account->getLastStatusSetting('active_with_msgs');
+                $time = ($time !== null) ? strtotime($time) : time();
+                $res = strtotime("+".$this->_account->service_package->activeMessagingPeriod, $time);
                 break;
             case 'active_with_msgs.setGrace':
-                $res = strtotime("+".$this->_account->service_package->fromMessagingToGrace, time());
+                // El tiempo debe contarse desde que se puso la cuenta en active.
+                $time = $this->_account->getLastStatusSetting('active');
+                $time = ($time !== null) ? strtotime($time) : time();
+                $res = strtotime("+".$this->_account->service_package->duration, $time);
                 break;
             case 'grace.setGraceWithMsgs':
+                // El tiempo debe contarse desde que se puso la cuenta en grace.
+                $time = $this->_account->getLastStatusSetting('grace');
+                $time = ($time !== null) ? strtotime($time) : time();
                 $period = $this->_account->service_package->fromGraceToMessaging;
                 if ($period !== null) {
-                    $res = strtotime("+".$period, time());
+                    $res = strtotime("+".$period, $time);
                 }
                 break;
             case 'grace.setPassive':
-                $res = strtotime("+".$this->_account->service_package->grace, time());
+                // El tiempo debe contarse desde que se puso la cuenta en grace.
+                $time = $this->_account->getLastStatusSetting('grace');
+                $time = ($time !== null) ? strtotime($time) : time();
+                $res = strtotime("+".$this->_account->service_package->grace, $time);
                 break;
             case 'grace_with_msgs.setPassive':
-                $res = strtotime("+".$this->_account->service_package->fromMessagingToPassive, time());
+                // El tiempo debe contarse desde que se puso la cuenta en grace.
+                $time = $this->_account->getLastStatusSetting('grace');
+                $time = ($time !== null) ? strtotime($time) : time();
+                $res = strtotime("+".$this->_account->service_package->grace, $time);
                 break;
             case 'grace_with_msgs.sendMessage':
-                $res = strtotime("+".$this->_account->service_package->graceMessagingPeriod, time());
+                // El tiempo debe contarse desde que se puso la cuenta en grace_with_msgs.
+                $time = $this->_account->getLastStatusSetting('grace_with_msgs');
+                $time = ($time !== null) ? strtotime($time) : time();
+                $res = strtotime("+".$this->_account->service_package->graceMessagingPeriod, $time);
                 break;
             case 'passive_accum.setPassiveNotAccum':
-                $res = strtotime("+".$this->_account->service_package->duration, time());
+                // El tiempo debe contarse N veces desde que se puso la cuenta en grace.
+                $time = $this->_account->getLastStatusSetting('grace');
+                $time = ($time !== null) ? strtotime($time) : time();
+                $i = 0;
+                while ($i <= $this->_account->getDebtAccumulations()) {
+                    $time = strtotime("+".$this->_account->service_package->duration, $time);
+                    $i++;
+                }
+                $res = $time;
                 break;
             case 'passive_not_accum.expropiateBalance':
-                $res = strtotime("+".$this->_account->service_package->fromPassiveToExpropiate, time());
+                if (!$this->_account->isExpropiated()) {
+                    // El tiempo debe contarse desde que se puso la cuenta en grace.
+                    $time = $this->_account->getLastStatusSetting('grace');
+                    $time = ($time !== null) ? strtotime($time) : time();
+                    $res = strtotime("+".$this->_account->service_package->fromGraceToExpropiate, $time);
+                }
                 break;
             case 'passive_not_accum.setExpired':
-                $res = strtotime("+".$this->_account->service_package->fromPassiveToExpired, time());
+                // El tiempo debe contarse desde que se puso la cuenta en grace.
+                $time = $this->_account->getLastStatusSetting('grace');
+                $time = ($time !== null) ? strtotime($time) : time();
+                $res = strtotime("+".$this->_account->service_package->fromGraceToExpired, $time);
                 break;
             case 'expired.setShutdown':
-                $res = strtotime("+".$this->_account->service_package->fromExpiredToShutdown, time());
+                // El tiempo debe contarse desde que se puso la cuenta en grace.
+                $time = $this->_account->getLastStatusSetting('grace');
+                $time = ($time !== null) ? strtotime($time) : time();
+                $res = strtotime("+".$this->_account->service_package->fromExpiredToShutdown, $time);
                 break;
         }
 
