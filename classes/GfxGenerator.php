@@ -17,7 +17,7 @@ class GfxGenerator
 
         // gfx start
         $rawdata = "digraph gfx { \n";
-        $rawdata .= "rankdir=LR; \n";
+        $rawdata .= "rankdir=TB; \n";
 
         // places
         foreach ($flow->getPlaces() AS $place => $config) {

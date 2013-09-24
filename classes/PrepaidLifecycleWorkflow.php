@@ -1,7 +1,6 @@
 <?php
 
 /*
- * TODO: Hacer envío de mensajes en grace.
  * TODO: Cobrar cargo de reconexión.
  * TODO: Separar estados públicos e internos.
  * TODO: No renovar las fechas, usar pasaje a grace como base.
@@ -26,33 +25,37 @@ class PrepaidLifecycleWorkflow extends Workflow
         debug(__CLASS__.".".__FUNCTION__."() Executing. Will check account's balance and account's service cost.");
 
         $res           = 'error';
-        $enough_credit = false;
         $withdrawal    = 0;
+        $enough_credit = false;
 
         switch ($this->_account->getStatus()) {
             case "idle":
-                $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
                 $withdrawal    = $this->_account->service_package->cost;
+                $enough_credit = ($this->_account->getBalance() >= $withdrawal);
                 break;
             case "active_with_msgs":
-                $enough_credit = true;
                 $withdrawal    = 0;
+                $enough_credit = true;
                 break;
             case "grace":
-                $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
                 $withdrawal    = $this->_account->service_package->cost;
+                $enough_credit = ($this->_account->getBalance() >= $withdrawal);
+                break;
+            case "grace_with_msgs":
+                $withdrawal    = $this->_account->service_package->cost;
+                $enough_credit = ($this->_account->getBalance() >= $withdrawal);
                 break;
             case "passive_accum":
-                $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
                 $withdrawal    = $this->_account->service_package->cost;
+                $enough_credit = ($this->_account->getBalance() >= $withdrawal);
                 break;
             case "passive_not_accum":
-                $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
                 $withdrawal    = $this->_account->service_package->cost;
+                $enough_credit = ($this->_account->getBalance() >= $withdrawal);
                 break;
             case "expired":
-                $enough_credit = ($this->_account->getBalance() >= $this->_account->service_package->cost);
                 $withdrawal    = $this->_account->service_package->cost;
+                $enough_credit = ($this->_account->getBalance() >= $withdrawal);
                 break;
         }
 
@@ -148,6 +151,17 @@ class PrepaidLifecycleWorkflow extends Workflow
             $res = 'error';
         }        
         
+        return $res;
+    }
+
+    public function setGraceWithMsgs($params = null)
+    {
+        debug(__CLASS__.".".__FUNCTION__."() Executing.");
+
+        debug(__CLASS__.".".__FUNCTION__."() Setting status to GRACE_WITH_MSGS!.");
+        $this->_account->setStatus('grace_with_msgs');
+        $res = 'error';
+
         return $res;
     }
     
@@ -252,13 +266,25 @@ class PrepaidLifecycleWorkflow extends Workflow
                 }
                 break;
             case 'active_with_msgs.sendMessage':
-                $res = strtotime("+".$this->_account->service_package->messagingPeriod, time());
+                $res = strtotime("+".$this->_account->service_package->activeMessagingPeriod, time());
                 break;
             case 'active_with_msgs.setGrace':
                 $res = strtotime("+".$this->_account->service_package->fromMessagingToGrace, time());
                 break;
+            case 'grace.setGraceWithMsgs':
+                $period = $this->_account->service_package->fromGraceToMessaging;
+                if ($period !== null) {
+                    $res = strtotime("+".$period, time());
+                }
+                break;
             case 'grace.setPassive':
                 $res = strtotime("+".$this->_account->service_package->grace, time());
+                break;
+            case 'grace_with_msgs.setPassive':
+                $res = strtotime("+".$this->_account->service_package->fromMessagingToPassive, time());
+                break;
+            case 'grace_with_msgs.sendMessage':
+                $res = strtotime("+".$this->_account->service_package->graceMessagingPeriod, time());
                 break;
             case 'passive_accum.setPassiveNotAccum':
                 $res = strtotime("+".$this->_account->service_package->duration, time());
@@ -273,7 +299,7 @@ class PrepaidLifecycleWorkflow extends Workflow
                 $res = strtotime("+".$this->_account->service_package->fromExpiredToShutdown, time());
                 break;
         }
-        
+
         return $res;
     }
 
@@ -312,6 +338,17 @@ class PrepaidLifecycleWorkflow extends Workflow
                                         'out_arcs' => array(
                                             'grace.checkBalanceForActive',
                                             'grace.setPassive',
+                                            'grace.setGraceWithMsgs',
+                                        ),
+                                        'description' => array(
+                                            'hasService' => true,
+                                        ),
+                                     );
+        $this->places['grace_with_msgs'] = array(
+                                        'out_arcs' => array(
+                                            'grace_with_msgs.checkBalanceForActive',
+                                            'grace_with_msgs.setPassive',
+                                            'grace_with_msgs.sendMessage',
                                         ),
                                         'description' => array(
                                             'hasService' => true,
@@ -512,6 +549,68 @@ class PrepaidLifecycleWorkflow extends Workflow
                         'condition' => 'ok',
                     ),
                     'grace' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'error',
+                    ),
+                ),
+            ),
+            'grace.setGraceWithMsgs' => array(
+                'trigger' => 'TIME',
+                'time_limit' => 'grace.setGraceWithMsgs',
+                'task' => 'setGraceWithMsgs',
+                'in_arcs' => array(
+                    'grace',
+                ),
+                'out_arcs' => array(
+                    'grace_with_msgs' => array(
+                        'type' => 'SEQ',
+                    ),
+                ),
+            ),
+            'grace_with_msgs.setPassive' => array(
+                'trigger' => 'TIME',
+                'time_limit' => 'grace_with_msgs.setPassive',
+                'task' => 'setPassive',
+                'in_arcs' => array(
+                    'grace_with_msgs',
+                ),
+                'out_arcs' => array(
+                    'passive_accum' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'accumulate',
+                    ),
+                    'passive_not_accum' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => '!accumulate',
+                    ),
+                ),
+            ),
+            'grace_with_msgs.sendMessage' => array(
+                'trigger' => 'TIME',
+                'time_limit' => 'grace_with_msgs.sendMessage',
+                'task' => 'sendMessage',
+                'in_arcs' => array(
+                    'grace_with_msgs',
+                ),
+                'out_arcs' => array(
+                    'grace_with_msgs' => array(
+                        'type' => 'SEQ',
+                    ),
+                ),
+            ),
+            'grace_with_msgs.checkBalanceForActive' => array(
+                'trigger' => 'MSG',
+                'message' => 'grace_with_msgs.deposit',
+                'task' => 'checkBalanceForActive',
+                'in_arcs' => array(
+                    'grace_with_msgs',
+                ),
+                'out_arcs' => array(
+                    'active' => array(
+                        'type' => 'EXPLICIT_OR_SPLIT',
+                        'condition' => 'ok',
+                    ),
+                    'grace_with_msgs' => array(
                         'type' => 'EXPLICIT_OR_SPLIT',
                         'condition' => 'error',
                     ),

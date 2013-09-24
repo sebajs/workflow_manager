@@ -8,11 +8,13 @@ class Account extends Show
     protected $status             = 'idle';
     public    $service_package;
     private   $transactions       = array();
+    private   $status_history     = array();
     
     public function __construct($account_id)
     {
         $this->id = $account_id;
         $this->debt_accumulations = 0;
+        $this->reconnection_fee   = false;
 
         $this->service_package                    = new stdClass();
         $this->service_package->duration          = "30 seconds";
@@ -20,7 +22,10 @@ class Account extends Show
         
         $this->service_package->fromActiveToMessaging   = null;//"20 seconds";
         $this->service_package->fromMessagingToGrace    = null;//"10 seconds";
-        $this->service_package->messagingPeriod         = "3 seconds";
+        $this->service_package->activeMessagingPeriod   = "3 seconds";
+        $this->service_package->fromGraceToMessaging    = "5 seconds";
+        $this->service_package->fromMessagingToPassive  = "5 seconds";
+        $this->service_package->graceMessagingPeriod    = "3 seconds";
         $this->service_package->fromPassiveToExpropiate = "20 seconds";
         $this->service_package->fromPassiveToExpired    = "30 seconds";
         $this->service_package->fromExpiredToShutdown   = "30 seconds";
@@ -51,6 +56,7 @@ class Account extends Show
     public function setStatus($status)
     {
         $this->status = $status;
+        $this->status_history[$status] = time();
         $this->saveToFile();
     }
     
@@ -115,15 +121,18 @@ class Account extends Show
             
             $this->balance            = $data->balance;
             $this->status             = $data->status;
+            $this->status_history     = $data->status_history;
             $this->transactions       = $data->transactions;;
             $this->debt_accumulations = $data->debt_accumulations;
-            
+            $this->reconnection_fee   = $data->reconnection_fee;
+
             $this->service_package->duration          = $data->service_package->duration;
             $this->service_package->grace             = $data->service_package->grace;
 
             $this->service_package->fromActiveToMessaging   = $data->service_package->fromActiveToMessaging;
             $this->service_package->fromMessagingToGrace    = $data->service_package->fromMessagingToGrace;
-            $this->service_package->messagingPeriod         = $data->service_package->messagingPeriod;
+            $this->service_package->activeMessagingPeriod   = $data->service_package->activeMessagingPeriod;
+            $this->service_package->graceMessagingPeriod    = $data->service_package->graceMessagingPeriod;
             $this->service_package->fromPassiveToExpropiate = $data->service_package->fromPassiveToExpropiate;
             $this->service_package->fromPassiveToExpired    = $data->service_package->fromPassiveToExpired;
             $this->service_package->fromExpiredToShutdown   = $data->service_package->fromExpiredToShutdown;
